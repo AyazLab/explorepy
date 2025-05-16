@@ -437,7 +437,7 @@ class Explore:
         duration = self._check_duration(duration)
 
         self.lsl['timer'] = Timer(duration, self.stop_lsl)
-        self.lsl['server'] = LslServer(self.stream_processor.device_info)
+        self.lsl['server'] = LslServer(self.stream_processor.device_info, filters=self.stream_processor.filters)
         self.stream_processor.subscribe(
             topic=TOPICS.raw_ExG, callback=self.lsl['server'].push_exg)
         self.stream_processor.subscribe(
@@ -667,3 +667,39 @@ class Explore:
 
     def get_channel_mask(self):
         return SettingsManager(self.device_name).get_adc_mask()
+
+    def set_exg_channel_name(self, channel_number, name):
+        """Set the name for a specific ExG channel
+        
+        Args:
+            channel_number (int): Channel number (1-based)
+            name (str): New channel name (e.g., 'Pz', 'C3')
+            
+        Returns:
+            bool: True for success, False otherwise
+        """
+        self._check_connection()
+        current_names = SettingsManager(self.device_name).get_channel_names()
+        if current_names and len(current_names) >= channel_number:
+            current_names[channel_number - 1] = name
+            SettingsManager(self.device_name).set_chan_names(current_names)
+            return True
+        return False
+
+    def set_reference_label(self, label, is_subtracted=False, is_common_average=False):
+        """Set the reference label for the EEG data
+        
+        Args:
+            label (str): Name of the reference channel (e.g., 'Cz', 'A1')
+            is_subtracted (bool): Whether the reference has been subtracted from the data
+            is_common_average (bool): Whether the reference is a common average
+            
+        Returns:
+            bool: True for success, False otherwise
+        """
+        self._check_connection()
+        settings = SettingsManager(self.device_name)
+        settings.set_reference_label(label)
+        settings.set_reference_subtracted(is_subtracted)
+        settings.set_reference_common_average(is_common_average)
+        return True

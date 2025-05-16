@@ -655,7 +655,7 @@ class FileRecorder:
 
 class LslServer:
     """Class for LabStreamingLayer integration"""
-    def __init__(self, device_info, stream_name=None):
+    def __init__(self, device_info, stream_name=None, filters=None):
         self.adc_mask = SettingsManager(
             device_info["device_name"]).get_adc_mask()
         if len(SettingsManager(device_info["device_name"]).get_channel_names()) == len(self.adc_mask):
@@ -673,6 +673,67 @@ class LslServer:
                               channel_format='float32',
                               source_id=device_info["device_name"] + "_ExG")
         info_exg.desc().append_child_value("manufacturer", "Mentalab")
+        
+        # Add reference information
+        reference = info_exg.desc().append_child("reference")
+        settings = SettingsManager(device_info["device_name"])
+        settings.load_current_settings()  # Ensure settings are loaded
+        if settings.settings_dict and 'reference' in settings.settings_dict:
+            ref_info = settings.settings_dict['reference']
+            if 'label' in ref_info:
+                reference.append_child_value("label", ref_info['label'])
+            if 'subtracted' in ref_info:
+                reference.append_child_value("subtracted", "Yes" if ref_info['subtracted'] else "No")
+            if 'common_average' in ref_info:
+                reference.append_child_value("common_average", "Yes" if ref_info['common_average'] else "No")
+        
+        # Add filtering information only if filters are present
+        if filters:
+            filtering = info_exg.desc().append_child("filtering")
+            for filt in filters:
+                if filt.filter_type == "bandpass":
+                    # Split bandpass into highpass and lowpass components
+                    highpass = filtering.append_child("highpass")
+                    highpass.append_child_value("type", "IIR")
+                    highpass.append_child_value("design", "Butterworth")
+                    highpass.append_child_value("lower", str(filt.cutoff_freq[0]))
+                    highpass.append_child_value("upper", str(filt.cutoff_freq[0]))
+                    highpass.append_child_value("order", str(filt.order))
+
+                    lowpass = filtering.append_child("lowpass")
+                    lowpass.append_child_value("type", "IIR")
+                    lowpass.append_child_value("design", "Butterworth")
+                    lowpass.append_child_value("lower", str(filt.cutoff_freq[1]))
+                    lowpass.append_child_value("upper", str(filt.cutoff_freq[1]))
+                    lowpass.append_child_value("order", str(filt.order))
+
+                elif filt.filter_type == "notch":
+                    notch = filtering.append_child("notch")
+                    notch.append_child_value("type", "IIR")
+                    notch.append_child_value("design", "Butterworth")
+                    notch.append_child_value("center", str(filt.cutoff_freq))
+                    notch.append_child_value("bandwidth", "4")  # Default bandwidth
+                    notch.append_child_value("order", str(filt.order))
+
+                elif filt.filter_type == "lowpass":
+                    lowpass = filtering.append_child("lowpass")
+                    lowpass.append_child_value("type", "IIR")
+                    lowpass.append_child_value("design", "Butterworth")
+                    lowpass.append_child_value("lower", str(filt.cutoff_freq))
+                    lowpass.append_child_value("upper", str(filt.cutoff_freq))
+                    lowpass.append_child_value("order", str(filt.order))
+
+                elif filt.filter_type == "highpass":
+                    highpass = filtering.append_child("highpass")
+                    highpass.append_child_value("type", "IIR")
+                    highpass.append_child_value("design", "Butterworth")
+                    highpass.append_child_value("lower", str(filt.cutoff_freq))
+                    highpass.append_child_value("upper", str(filt.cutoff_freq))
+                    highpass.append_child_value("order", str(filt.order))
+        else:
+            # If no filters are present, set filtering to None
+            info_exg.desc().append_child("filtering")
+
         channels = info_exg.desc().append_child("channels")
         for i, mask in enumerate(self.adc_mask):
             if mask == 1:
