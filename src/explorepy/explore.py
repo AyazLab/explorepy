@@ -686,6 +686,21 @@ class Explore:
             return True
         return False
 
+    def get_exg_channel_name(self, channel_number):
+        """Get the name of a specific ExG channel
+        
+        Args:
+            channel_number (int): Channel number (1-based)
+            
+        Returns:
+            str: Channel name if found, None otherwise
+        """
+        self._check_connection()
+        current_names = SettingsManager(self.device_name).get_channel_names()
+        if current_names and len(current_names) >= channel_number:
+            return current_names[channel_number - 1]
+        return None
+
     def set_reference_label(self, label, is_subtracted=False, is_common_average=False):
         """Set the reference label for the EEG data
         
@@ -703,3 +718,39 @@ class Explore:
         settings.set_reference_subtracted(is_subtracted)
         settings.set_reference_common_average(is_common_average)
         return True
+
+    def get_reference_label(self):
+        """Get the reference label for the EEG data
+        
+        Returns:
+            str: Name of the reference channel, or None if no reference is set
+        """
+        self._check_connection()
+        settings = SettingsManager(self.device_name)
+        settings.load_current_settings()
+        ref_info = settings.settings_dict.get('reference')
+        return ref_info.get('label') if ref_info else None
+
+    def is_reference_subtracted(self):
+        """Check if reference is subtracted from the data
+        
+        Returns:
+            bool: True if reference is subtracted, False otherwise
+        """
+        self._check_connection()
+        settings = SettingsManager(self.device_name)
+        settings.load_current_settings()
+        ref_info = settings.settings_dict.get('reference')
+        return ref_info.get('subtracted', False) if ref_info else False
+
+    def is_common_average_reference(self):
+        """Check if common average reference is used
+        
+        Returns:
+            bool: True if common average reference is used, False otherwise
+        """
+        self._check_connection()
+        settings = SettingsManager(self.device_name)
+        settings.load_current_settings()
+        ref_info = settings.settings_dict.get('reference')
+        return ref_info.get('common_average', False) if ref_info else False
