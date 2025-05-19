@@ -1,7 +1,8 @@
+from unittest.mock import patch
+
 import pytest
 import explorepy
-from explorepy.stream_processor import TOPICS
-from unittest.mock import Mock, patch
+
 
 # Fixture for common setup
 @pytest.fixture
@@ -16,7 +17,7 @@ def test_channel_name_setting(mock_explore):
     # Set channel names
     mock_explore.set_exg_channel_name(1, 'Pz')
     mock_explore.set_exg_channel_name(2, 'Cz')
-    
+
     # Get the channel names
     assert mock_explore.get_exg_channel_name(1) == 'Pz'
     assert mock_explore.get_exg_channel_name(2) == 'Cz'
@@ -24,7 +25,7 @@ def test_channel_name_setting(mock_explore):
 def test_reference_label_setting(mock_explore):
     """Test reference label configuration"""
     mock_explore.set_reference_label('Ref_Node', is_subtracted=True, is_common_average=False)
-    
+
     # Assert the reference settings
     assert mock_explore.get_reference_label() == 'Ref_Node'
     assert mock_explore.is_reference_subtracted() == True
@@ -34,13 +35,13 @@ def test_filter_addition(mock_explore):
     """Test adding filters to the stream processor"""
     # Add notch filter
     mock_explore.stream_processor.add_filter(cutoff_freq=50, filter_type='notch')
-    
+
     # Add high-pass filter
     mock_explore.stream_processor.add_filter(cutoff_freq=0.1, filter_type='highpass')
-    
-    # Add low-pass filter
+
+    # Add a low-pass filter
     mock_explore.stream_processor.add_filter(cutoff_freq=100, filter_type='lowpass')
-    
+
     # Assert filters were added correctly
     filters = mock_explore.stream_processor.filters
     assert len(filters) == 3
