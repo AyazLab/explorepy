@@ -178,6 +178,30 @@ class SettingsManager:
         self.load_current_settings()
         return self.settings_dict.get(self.channel_name_key)
 
+    def set_reference_label(self, label):
+        """Setter method for reference label"""
+        self.load_current_settings()
+        if 'reference' not in self.settings_dict:
+            self.settings_dict['reference'] = {}
+        self.settings_dict['reference']['label'] = label
+        self.write_settings()
+
+    def set_reference_subtracted(self, is_subtracted):
+        """Setter method for reference subtraction status"""
+        self.load_current_settings()
+        if 'reference' not in self.settings_dict:
+            self.settings_dict['reference'] = {}
+        self.settings_dict['reference']['subtracted'] = is_subtracted
+        self.write_settings()
+
+    def set_reference_common_average(self, is_common_average):
+        """Setter method for common average reference status"""
+        self.load_current_settings()
+        if 'reference' not in self.settings_dict:
+            self.settings_dict['reference'] = {}
+        self.settings_dict['reference']['common_average'] = is_common_average
+        self.write_settings()
+
     def __str__(self):
         self.load_current_settings()
         return self.settings_dict
