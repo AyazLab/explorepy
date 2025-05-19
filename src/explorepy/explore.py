@@ -754,3 +754,56 @@ class Explore:
         settings.load_current_settings()
         ref_info = settings.settings_dict.get('reference')
         return ref_info.get('common_average', False) if ref_info else False
+
+    def acquire_with_impedance(self, duration=None, notch_freq=50, exg_callback=None, imp_callback=None):
+        """Start getting both EEG and impedance data from the device simultaneously
+
+        Args:
+            duration (float): Duration of acquiring data (if None it streams data endlessly)
+            notch_freq (int): Notch frequency for impedance measurement (default: 50)
+            exg_callback (function): Callback function for EEG data packets
+            imp_callback (function): Callback function for impedance data packets
+
+        Example:
+            >>> from explorepy.explore import Explore
+            >>> explore = Explore()
+            >>> explore.connect(device_name='Explore_2FA2')
+            >>> 
+            >>> def handle_exg(packet):
+            >>>     print("EEG data:", packet.get_data())
+            >>> 
+            >>> def handle_imp(packet):
+            >>>     print("Impedance values:", packet.get_impedances())
+            >>> 
+            >>> explore.acquire_with_impedance(duration=10, 
+            >>>                              exg_callback=handle_exg,
+            >>>                              imp_callback=handle_imp)
+        """
+        self._check_connection()
+        duration = self._check_duration(duration)
+
+        # Initialize impedance mode
+        self.stream_processor.imp_initialize(notch_freq=notch_freq)
+        self.is_measuring_imp = True
+
+        # Set up default callbacks if none provided
+        if exg_callback is None:
+            def exg_callback(packet):
+                print("EEG data:", packet.get_data())
+
+        if imp_callback is None:
+            def imp_callback(packet):
+                print("Impedance values:", packet.get_impedances())
+
+        # Subscribe to both data streams
+        self.stream_processor.subscribe(callback=exg_callback, topic=TOPICS.raw_ExG)
+        self.stream_processor.subscribe(callback=imp_callback, topic=TOPICS.imp)
+
+        logger.debug(f"Acquiring EEG and impedance data for {duration}s ...")
+        time.sleep(duration)
+
+        # Clean up
+        self.stream_processor.unsubscribe(callback=exg_callback, topic=TOPICS.raw_ExG)
+        self.stream_processor.unsubscribe(callback=imp_callback, topic=TOPICS.imp)
+        self.stream_processor.disable_imp()
+        self.is_measuring_imp = False
