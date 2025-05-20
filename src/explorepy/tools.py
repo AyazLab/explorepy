@@ -666,14 +666,16 @@ class LslServer:
         n_chan = self.adc_mask.count(1)
         self.exg_fs = device_info['sampling_rate']
         orn_fs = 20
-        info_exg = StreamInfo(name=device_info["device_name"] + "_ExG",
-                              type='ExG',
-                              channel_count=n_chan,
-                              nominal_srate=self.exg_fs,
-                              channel_format='float32',
-                              source_id=device_info["device_name"] + "_ExG")
+        info_exg = StreamInfo(
+            name=device_info["device_name"] + "_ExG",
+            type='ExG',
+            channel_count=n_chan,
+            nominal_srate=self.exg_fs,
+            channel_format='float32',
+            source_id=device_info["device_name"] + "_ExG"
+        )
         info_exg.desc().append_child_value("manufacturer", "Mentalab")
-        
+
         # Add reference information
         reference = info_exg.desc().append_child("reference")
         settings = SettingsManager(device_info["device_name"])
@@ -686,7 +688,7 @@ class LslServer:
                 reference.append_child_value("subtracted", "Yes" if ref_info['subtracted'] else "No")
             if 'common_average' in ref_info:
                 reference.append_child_value("common_average", "Yes" if ref_info['common_average'] else "No")
-        
+
         # Add filtering information only if filters are present
         if filters:
             filtering = info_exg.desc().append_child("filtering")
@@ -742,12 +744,14 @@ class LslServer:
                     .append_child_value("unit", EXG_UNITS[i]) \
                     .append_child_value("type", "ExG")
         orn_ch = get_orn_chan_len(device_info)
-        info_orn = StreamInfo(name=device_info["device_name"] + "_ORN",
-                              type='ORN',
-                              channel_count=orn_ch,
-                              nominal_srate=orn_fs,
-                              channel_format='float32',
-                              source_id=device_info["device_name"] + "_ORN")
+        info_orn = StreamInfo(
+            name=device_info["device_name"] + "_ORN",
+            type='ORN',
+            channel_count=orn_ch,
+            nominal_srate=orn_fs,
+            channel_format='float32',
+            source_id=device_info["device_name"] + "_ORN"
+        )
         info_orn.desc().append_child_value("manufacturer", "Mentalab")
         channels = info_orn.desc().append_child("channels")
         for chan, unit in zip(ORN_CHANNELS, ORN_UNITS):
@@ -756,23 +760,27 @@ class LslServer:
                 .append_child_value("unit", unit) \
                 .append_child_value("type", "ORN")
 
-        info_marker = StreamInfo(name=device_info["device_name"] + "_Marker",
-                                 type='Markers',
-                                 channel_count=1,
-                                 nominal_srate=0,
-                                 channel_format='string',
-                                 source_id=device_info["device_name"] + "_Markers")
+        info_marker = StreamInfo(
+            name=device_info["device_name"] + "_Marker",
+            type='Markers',
+            channel_count=1,
+            nominal_srate=0,
+            channel_format='string',
+            source_id=device_info["device_name"] + "_Markers"
+        )
 
         # Initialize impedance stream if needed
         self.imp_outlet = None
         if device_info.get('is_imp_mode', False):
             n_chan = self.adc_mask.count(1)
-            info_imp = StreamInfo(name=device_info["device_name"] + "_Impedance",
-                                type='Impedance',
-                                channel_count=n_chan,
-                                nominal_srate=1,  # Impedance is typically measured at 1Hz
-                                channel_format='float32',
-                                source_id=device_info["device_name"] + "_Impedance")
+            info_imp = StreamInfo(
+                name=device_info["device_name"] + "_Impedance",
+                type='Impedance',
+                channel_count=n_chan,
+                nominal_srate=1,  # Impedance is typically measured at 1Hz
+                channel_format='float32',
+                source_id=device_info["device_name"] + "_Impedance"
+            )
             info_imp.desc().append_child_value("manufacturer", "Mentalab")
             channels = info_imp.desc().append_child("channels")
             for i in range(n_chan):
@@ -792,8 +800,8 @@ class LslServer:
             stream_names.append(f"{device_info['device_name']}_Impedance")
         
         logger.info(
-            f"LSL Streams have been created with names/source IDs as the following:\n"
-            f"\t\t\t\t\t " + "\n\t\t\t\t\t ".join(stream_names)
+            "LSL Streams have been created with names/source IDs as the following:\n"
+            "\t\t\t\t\t " + "\n\t\t\t\t\t ".join(stream_names)
         )
 
         self.orn_outlet = StreamOutlet(info_orn)
@@ -841,12 +849,14 @@ class LslServer:
             return  # Stream already initialized
 
         n_chan = self.adc_mask.count(1)
-        info_imp = StreamInfo(name=device_info["device_name"] + "_Impedance",
-                             type='Impedance',
-                             channel_count=n_chan,
-                             nominal_srate=1,  # Impedance is typically measured at 1Hz
-                             channel_format='float32',
-                             source_id=device_info["device_name"] + "_Impedance")
+        info_imp = StreamInfo(
+            name=device_info["device_name"] + "_Impedance",
+            type='Impedance',
+            channel_count=n_chan,
+            nominal_srate=1,  # Impedance is typically measured at 1Hz
+            channel_format='float32',
+            source_id=device_info["device_name"] + "_Impedance"
+        )
         info_imp.desc().append_child_value("manufacturer", "Mentalab")
         channels = info_imp.desc().append_child("channels")
         for i in range(n_chan):

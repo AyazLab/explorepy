@@ -1,9 +1,6 @@
-from unittest.mock import patch
 import time
-
 import pytest
 import explorepy
-from explorepy.stream_processor import TOPICS
 from pylsl import resolve_streams
 
 
@@ -93,5 +90,3 @@ def test_push2lsl_impedance_streams(mock_explore):
     
     # Clean up
     mock_explore.stop_lsl()
-
-

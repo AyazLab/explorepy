@@ -714,11 +714,11 @@ class Explore:
 
     def set_exg_channel_name(self, channel_number, name):
         """Set the name for a specific ExG channel
-        
+
         Args:
             channel_number (int): Channel number (1-based)
             name (str): New channel name (e.g., 'Pz', 'C3')
-            
+
         Returns:
             bool: True for success, False otherwise
         """
@@ -732,10 +732,10 @@ class Explore:
 
     def get_exg_channel_name(self, channel_number):
         """Get the name of a specific ExG channel
-        
+
         Args:
             channel_number (int): Channel number (1-based)
-            
+
         Returns:
             str: Channel name if found, None otherwise
         """
@@ -747,12 +747,12 @@ class Explore:
 
     def set_reference_label(self, label, is_subtracted=False, is_common_average=False):
         """Set the reference label for the EEG data
-        
+
         Args:
             label (str): Name of the reference channel (e.g., 'Cz', 'A1')
             is_subtracted (bool): Whether the reference has been subtracted from the data
             is_common_average (bool): Whether the reference is a common average
-            
+
         Returns:
             bool: True for success, False otherwise
         """
@@ -765,7 +765,7 @@ class Explore:
 
     def get_reference_label(self):
         """Get the reference label for the EEG data
-        
+
         Returns:
             str: Name of the reference channel, or None if no reference is set
         """
@@ -777,7 +777,7 @@ class Explore:
 
     def is_reference_subtracted(self):
         """Check if reference is subtracted from the data
-        
+
         Returns:
             bool: True if reference is subtracted, False otherwise
         """
@@ -789,7 +789,7 @@ class Explore:
 
     def is_common_average_reference(self):
         """Check if common average reference is used
-        
+
         Returns:
             bool: True if common average reference is used, False otherwise
         """
