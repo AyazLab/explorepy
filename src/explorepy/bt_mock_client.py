@@ -3,7 +3,6 @@
 import logging
 import time
 
-from explorepy.BLEClient import BLEClient
 from explorepy import settings_manager
 from explorepy._exceptions import InputError
 from explorepy.bt_mock_server import MockBtServer

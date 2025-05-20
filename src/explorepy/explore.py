@@ -457,6 +457,45 @@ class Explore:
                 self.stop_lsl()
                 time.sleep(1)
 
+    def push2lsl_impedance(self, duration=None, notch_freq=50, block=False):
+        """Push samples to LSL streams (ExG, Marker, ORN, Impedance)
+
+        Args:
+            duration (float): Duration of streaming in seconds. If None, streams until stopped. Defaults to None.
+            notch_freq (int): Notch frequency for impedance measurement (default: 50)
+            block (bool): If True, blocks the execution until streaming is finished. Defaults to False.
+        """
+        self._check_connection()
+        duration = self._check_duration(duration)
+
+        # Initialize impedance mode before creating LSL server
+        self.stream_processor.imp_initialize(notch_freq=notch_freq)
+        # Update device info to reflect impedance mode
+        self.stream_processor.device_info['is_imp_mode'] = True
+
+        self.lsl['timer'] = Timer(duration, self.stop_lsl)
+        self.lsl['server'] = LslServer(self.stream_processor.device_info, filters=self.stream_processor.filters)
+        self.stream_processor.subscribe(
+            topic=TOPICS.raw_ExG, callback=self.lsl['server'].push_exg)
+        self.stream_processor.subscribe(
+            topic=TOPICS.raw_orn, callback=self.lsl['server'].push_orn)
+        self.stream_processor.subscribe(
+            topic=TOPICS.marker, callback=self.lsl['server'].push_marker)
+        self.stream_processor.subscribe(
+            topic=TOPICS.imp, callback=self.lsl['server'].push_imp)
+        self.lsl['timer'].start()
+
+        if block:
+            try:
+                while 'timer' in self.lsl.keys() and self.lsl['timer'].is_alive():
+                    time.sleep(.3)
+            except KeyboardInterrupt:
+                logger.info(
+                    "Got Keyboard Interrupt while pushing data to LSL in blocked mode!")
+                self.stream_processor.stop()
+                self.stop_lsl()
+                time.sleep(1)
+
     def stop_lsl(self):
         """Stop pushing data to LSL streams"""
         if self.lsl:
@@ -466,8 +505,13 @@ class Explore:
                 topic=TOPICS.raw_orn, callback=self.lsl['server'].push_orn)
             self.stream_processor.unsubscribe(
                 topic=TOPICS.marker, callback=self.lsl['server'].push_marker)
+            if hasattr(self.lsl['server'], 'push_imp'):
+                self.stream_processor.unsubscribe(
+                    topic=TOPICS.imp, callback=self.lsl['server'].push_imp)
             if self.lsl['timer'].is_alive():
                 self.lsl['timer'].cancel()
+            if self.is_measuring_imp:
+                self.stream_processor.disable_imp()
             self.lsl = {}
 
             logger.info("Push2lsl has been stopped.")
@@ -670,11 +714,11 @@ class Explore:
 
     def set_exg_channel_name(self, channel_number, name):
         """Set the name for a specific ExG channel
-        
+
         Args:
             channel_number (int): Channel number (1-based)
             name (str): New channel name (e.g., 'Pz', 'C3')
-            
+
         Returns:
             bool: True for success, False otherwise
         """
@@ -688,10 +732,10 @@ class Explore:
 
     def get_exg_channel_name(self, channel_number):
         """Get the name of a specific ExG channel
-        
+
         Args:
             channel_number (int): Channel number (1-based)
-            
+
         Returns:
             str: Channel name if found, None otherwise
         """
@@ -703,12 +747,12 @@ class Explore:
 
     def set_reference_label(self, label, is_subtracted=False, is_common_average=False):
         """Set the reference label for the EEG data
-        
+
         Args:
             label (str): Name of the reference channel (e.g., 'Cz', 'A1')
             is_subtracted (bool): Whether the reference has been subtracted from the data
             is_common_average (bool): Whether the reference is a common average
-            
+
         Returns:
             bool: True for success, False otherwise
         """
@@ -721,7 +765,7 @@ class Explore:
 
     def get_reference_label(self):
         """Get the reference label for the EEG data
-        
+
         Returns:
             str: Name of the reference channel, or None if no reference is set
         """
@@ -733,7 +777,7 @@ class Explore:
 
     def is_reference_subtracted(self):
         """Check if reference is subtracted from the data
-        
+
         Returns:
             bool: True if reference is subtracted, False otherwise
         """
@@ -745,7 +789,7 @@ class Explore:
 
     def is_common_average_reference(self):
         """Check if common average reference is used
-        
+
         Returns:
             bool: True if common average reference is used, False otherwise
         """
