@@ -798,7 +798,7 @@ class LslServer:
         ]
         if self.imp_outlet:
             stream_names.append(f"{device_info['device_name']}_Impedance")
-        
+
         logger.info(
             "LSL Streams have been created with names/source IDs as the following:\n"
             "\t\t\t\t\t " + "\n\t\t\t\t\t ".join(stream_names)
@@ -864,7 +864,7 @@ class LslServer:
                 .append_child_value("name", f"Channel_{i+1}") \
                 .append_child_value("unit", "kOhm") \
                 .append_child_value("type", "Impedance")
-        
+
         logger.info(f"\t\t\t\t\t {device_info['device_name']}_Impedance")
         self.imp_outlet = StreamOutlet(info_imp)
 
