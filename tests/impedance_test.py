@@ -1,7 +1,9 @@
 import time
+
 import pytest
-import explorepy
 from pylsl import resolve_streams
+
+import explorepy
 
 
 # Fixture for common setup
