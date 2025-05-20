@@ -457,6 +457,45 @@ class Explore:
                 self.stop_lsl()
                 time.sleep(1)
 
+    def push2lsl_impedance(self, duration=None, notch_freq=50, block=False):
+        """Push samples to LSL streams (ExG, Marker, ORN, Impedance)
+
+        Args:
+            duration (float): Duration of streaming in seconds. If None, streams until stopped. Defaults to None.
+            notch_freq (int): Notch frequency for impedance measurement (default: 50)
+            block (bool): If True, blocks the execution until streaming is finished. Defaults to False.
+        """
+        self._check_connection()
+        duration = self._check_duration(duration)
+
+        # Initialize impedance mode before creating LSL server
+        self.stream_processor.imp_initialize(notch_freq=notch_freq)
+        # Update device info to reflect impedance mode
+        self.stream_processor.device_info['is_imp_mode'] = True
+
+        self.lsl['timer'] = Timer(duration, self.stop_lsl)
+        self.lsl['server'] = LslServer(self.stream_processor.device_info, filters=self.stream_processor.filters)
+        self.stream_processor.subscribe(
+            topic=TOPICS.raw_ExG, callback=self.lsl['server'].push_exg)
+        self.stream_processor.subscribe(
+            topic=TOPICS.raw_orn, callback=self.lsl['server'].push_orn)
+        self.stream_processor.subscribe(
+            topic=TOPICS.marker, callback=self.lsl['server'].push_marker)
+        self.stream_processor.subscribe(
+            topic=TOPICS.imp, callback=self.lsl['server'].push_imp)
+        self.lsl['timer'].start()
+
+        if block:
+            try:
+                while 'timer' in self.lsl.keys() and self.lsl['timer'].is_alive():
+                    time.sleep(.3)
+            except KeyboardInterrupt:
+                logger.info(
+                    "Got Keyboard Interrupt while pushing data to LSL in blocked mode!")
+                self.stream_processor.stop()
+                self.stop_lsl()
+                time.sleep(1)
+
     def stop_lsl(self):
         """Stop pushing data to LSL streams"""
         if self.lsl:
@@ -466,8 +505,13 @@ class Explore:
                 topic=TOPICS.raw_orn, callback=self.lsl['server'].push_orn)
             self.stream_processor.unsubscribe(
                 topic=TOPICS.marker, callback=self.lsl['server'].push_marker)
+            if hasattr(self.lsl['server'], 'push_imp'):
+                self.stream_processor.unsubscribe(
+                    topic=TOPICS.imp, callback=self.lsl['server'].push_imp)
             if self.lsl['timer'].is_alive():
                 self.lsl['timer'].cancel()
+            if self.is_measuring_imp:
+                self.stream_processor.disable_imp()
             self.lsl = {}
 
             logger.info("Push2lsl has been stopped.")
@@ -754,56 +798,3 @@ class Explore:
         settings.load_current_settings()
         ref_info = settings.settings_dict.get('reference')
         return ref_info.get('common_average', False) if ref_info else False
-
-    def acquire_with_impedance(self, duration=None, notch_freq=50, exg_callback=None, imp_callback=None):
-        """Start getting both EEG and impedance data from the device simultaneously
-
-        Args:
-            duration (float): Duration of acquiring data (if None it streams data endlessly)
-            notch_freq (int): Notch frequency for impedance measurement (default: 50)
-            exg_callback (function): Callback function for EEG data packets
-            imp_callback (function): Callback function for impedance data packets
-
-        Example:
-            >>> from explorepy.explore import Explore
-            >>> explore = Explore()
-            >>> explore.connect(device_name='Explore_2FA2')
-            >>> 
-            >>> def handle_exg(packet):
-            >>>     print("EEG data:", packet.get_data())
-            >>> 
-            >>> def handle_imp(packet):
-            >>>     print("Impedance values:", packet.get_impedances())
-            >>> 
-            >>> explore.acquire_with_impedance(duration=10, 
-            >>>                              exg_callback=handle_exg,
-            >>>                              imp_callback=handle_imp)
-        """
-        self._check_connection()
-        duration = self._check_duration(duration)
-
-        # Initialize impedance mode
-        self.stream_processor.imp_initialize(notch_freq=notch_freq)
-        self.is_measuring_imp = True
-
-        # Set up default callbacks if none provided
-        if exg_callback is None:
-            def exg_callback(packet):
-                print("EEG data:", packet.get_data())
-
-        if imp_callback is None:
-            def imp_callback(packet):
-                print("Impedance values:", packet.get_impedances())
-
-        # Subscribe to both data streams
-        self.stream_processor.subscribe(callback=exg_callback, topic=TOPICS.raw_ExG)
-        self.stream_processor.subscribe(callback=imp_callback, topic=TOPICS.imp)
-
-        logger.debug(f"Acquiring EEG and impedance data for {duration}s ...")
-        time.sleep(duration)
-
-        # Clean up
-        self.stream_processor.unsubscribe(callback=exg_callback, topic=TOPICS.raw_ExG)
-        self.stream_processor.unsubscribe(callback=imp_callback, topic=TOPICS.imp)
-        self.stream_processor.disable_imp()
-        self.is_measuring_imp = False

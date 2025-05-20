@@ -763,12 +763,39 @@ class LslServer:
                                  channel_format='string',
                                  source_id=device_info["device_name"] + "_Markers")
 
+        # Initialize impedance stream if needed
+        self.imp_outlet = None
+        if device_info.get('is_imp_mode', False):
+            n_chan = self.adc_mask.count(1)
+            info_imp = StreamInfo(name=device_info["device_name"] + "_Impedance",
+                                type='Impedance',
+                                channel_count=n_chan,
+                                nominal_srate=1,  # Impedance is typically measured at 1Hz
+                                channel_format='float32',
+                                source_id=device_info["device_name"] + "_Impedance")
+            info_imp.desc().append_child_value("manufacturer", "Mentalab")
+            channels = info_imp.desc().append_child("channels")
+            for i in range(n_chan):
+                channels.append_child("channel") \
+                    .append_child_value("name", f"Channel_{i+1}") \
+                    .append_child_value("unit", "kOhm") \
+                    .append_child_value("type", "Impedance")
+            self.imp_outlet = StreamOutlet(info_imp)
+
+        # Log all streams in one message
+        stream_names = [
+            f"{device_info['device_name']}_ExG",
+            f"{device_info['device_name']}_ORN",
+            f"{device_info['device_name']}_Markers"
+        ]
+        if self.imp_outlet:
+            stream_names.append(f"{device_info['device_name']}_Impedance")
+        
         logger.info(
             f"LSL Streams have been created with names/source IDs as the following:\n"
-            f"\t\t\t\t\t {device_info['device_name']}_ExG\n"
-            f"\t\t\t\t\t {device_info['device_name']}_ORN\n"
-            f"\t\t\t\t\t {device_info['device_name']}_Markers\n"
+            f"\t\t\t\t\t " + "\n\t\t\t\t\t ".join(stream_names)
         )
+
         self.orn_outlet = StreamOutlet(info_orn)
         self.exg_outlet = StreamOutlet(info_exg)
         self.marker_outlet = StreamOutlet(info_marker)
@@ -803,6 +830,45 @@ class LslServer:
         """
         _, code = packet.get_data()
         self.marker_outlet.push_sample(code)
+
+    def initialize_imp_stream(self, device_info):
+        """Initialize impedance stream when impedance mode is enabled
+
+        Args:
+            device_info (dict): Device information dictionary
+        """
+        if self.imp_outlet is not None:
+            return  # Stream already initialized
+
+        n_chan = self.adc_mask.count(1)
+        info_imp = StreamInfo(name=device_info["device_name"] + "_Impedance",
+                             type='Impedance',
+                             channel_count=n_chan,
+                             nominal_srate=1,  # Impedance is typically measured at 1Hz
+                             channel_format='float32',
+                             source_id=device_info["device_name"] + "_Impedance")
+        info_imp.desc().append_child_value("manufacturer", "Mentalab")
+        channels = info_imp.desc().append_child("channels")
+        for i in range(n_chan):
+            channels.append_child("channel") \
+                .append_child_value("name", f"Channel_{i+1}") \
+                .append_child_value("unit", "kOhm") \
+                .append_child_value("type", "Impedance")
+        
+        logger.info(f"\t\t\t\t\t {device_info['device_name']}_Impedance")
+        self.imp_outlet = StreamOutlet(info_imp)
+
+    def push_imp(self, packet):
+        """Push impedance data to LSL stream
+
+        Args:
+            packet (explorepy.packet.Impedance): Impedance packet
+        """
+        if self.imp_outlet is None:
+            return
+        imp_values = packet.get_impedances()
+        timestamp = packet.timestamp
+        self.imp_outlet.push_sample(imp_values, timestamp)
 
 
 class ImpedanceMeasurement:
